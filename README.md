@@ -113,6 +113,278 @@ await sdk.streams.subscribe({
 <img width="1918" height="885" alt="image" src="https://github.com/user-attachments/assets/9198d274-a80f-459b-b20d-8ace24ebab7c" />
 
 
+# How We Use the Somnia Data Streams SDK
+
+PulseMarket is built from the ground up around the `@somnia-chain/streams` SDK. This integration enables us to broadcast every trade, price movement, and portfolio change instantly to all connected users, transforming a traditional blockchain application into a real-time trading experience.
+
+---
+
+### 1. Defining Our Prediction Market Data Structures
+
+Every piece of data that flows through PulseMarket follows a strict schema. This ensures consistency across our platform and allows any third-party application to easily consume our market data streams.
+
+```typescript
+// file: lib/somnia-sdk.ts
+
+// Broadcasts updated market state after every trade execution
+export const MARKET_PRICE_SCHEMA = `uint256 marketId, string question, address creator, uint256 endTime, uint256 totalYesShares, uint256 totalNoShares, uint256 totalVolume, uint8 status, uint256 currentPrice, uint256 timestamp`;
+
+// Captures individual buy/sell transactions for live activity feeds
+export const TRADE_EXECUTED_SCHEMA = `uint256 marketId, address trader, bool isYes, uint256 shares, uint256 price, uint256 cost, uint256 timestamp, bytes32 txHash`;
+
+// Tracks user holdings for real-time portfolio valuation
+export const USER_POSITION_SCHEMA = `uint256 marketId, address user, uint256 yesShares, uint256 noShares, uint256 totalInvested, uint256 currentValue, int256 profitLoss, uint256 timestamp`;
+
+// Streams market resolution outcomes when creators settle markets
+export const MARKET_RESOLVED_SCHEMA = `uint256 marketId, bool outcome, uint256 winningPool, uint256 losingPool, address resolver, uint256 timestamp`;
+```
+
+---
+
+### 2. Broadcasting Price Updates After Every Trade
+
+Whenever a user buys or sells shares on PulseMarket, our system instantly broadcasts the new market price to all subscribers. We encode the updated market state using `SchemaEncoder` and push it through Somnia Data Streams using `sdk.streams.set()`.
+
+```typescript
+// file: lib/somnia-sdk.ts
+
+import { SDK, SchemaEncoder } from "@somnia-chain/streams";
+import { toHex } from "viem";
+import { MARKET_PRICE_SCHEMA, TRADE_EXECUTED_SCHEMA } from "./schemas";
+
+const marketPriceEncoder = new SchemaEncoder(MARKET_PRICE_SCHEMA);
+const tradeEncoder = new SchemaEncoder(TRADE_EXECUTED_SCHEMA);
+
+// Called after every successful buyShares() or sellShares() transaction
+export async function broadcastMarketPrice(sdk: SDK, marketId: number, market: MarketState) {
+  const encoded = marketPriceEncoder.encodeData([
+    { name: "marketId", value: marketId, type: "uint256" },
+    { name: "question", value: market.question, type: "string" },
+    { name: "creator", value: market.creator, type: "address" },
+    { name: "endTime", value: market.endTime, type: "uint256" },
+    { name: "totalYesShares", value: market.totalYesShares, type: "uint256" },
+    { name: "totalNoShares", value: market.totalNoShares, type: "uint256" },
+    { name: "totalVolume", value: market.totalVolume, type: "uint256" },
+    { name: "status", value: market.status, type: "uint8" },
+    { name: "currentPrice", value: market.currentPrice, type: "uint256" },
+    { name: "timestamp", value: Date.now(), type: "uint256" },
+  ]);
+
+  const streamKey = toHex(`pulsemarket_${marketId}`, { size: 32 });
+  const schemaId = await sdk.streams.computeSchemaId(MARKET_PRICE_SCHEMA);
+
+  const txHash = await sdk.streams.set([{
+    id: streamKey,
+    schemaId: schemaId,
+    data: encoded,
+  }]);
+
+  return txHash;
+}
+
+// Publishes trade details for live activity feeds and trade history
+export async function broadcastTradeExecution(sdk: SDK, marketId: number, trade: TradeDetails) {
+  const encoded = tradeEncoder.encodeData([
+    { name: "marketId", value: marketId, type: "uint256" },
+    { name: "trader", value: trade.trader, type: "address" },
+    { name: "isYes", value: trade.isYes, type: "bool" },
+    { name: "shares", value: trade.shares, type: "uint256" },
+    { name: "price", value: trade.executionPrice, type: "uint256" },
+    { name: "cost", value: trade.totalCost, type: "uint256" },
+    { name: "timestamp", value: Date.now(), type: "uint256" },
+    { name: "txHash", value: trade.txHash, type: "bytes32" },
+  ]);
+
+  const streamKey = toHex(`pulsemarket_trade_${marketId}_${Date.now()}`, { size: 32 });
+  const schemaId = await sdk.streams.computeSchemaId(TRADE_EXECUTED_SCHEMA);
+
+  const txHash = await sdk.streams.set([{
+    id: streamKey,
+    schemaId: schemaId,
+    data: encoded,
+  }]);
+
+  return txHash;
+}
+```
+
+---
+
+### 3. Real-Time Market Subscriptions in React
+
+Our frontend components subscribe to live market streams using custom React hooks. When any user trades on a market, every other user viewing that market sees the price update instantly without refreshing.
+
+```typescript
+// file: hooks/useRealtime.ts
+
+import { useEffect } from "react";
+import { SDK } from "@somnia-chain/streams";
+import { useMarketStore } from "@/lib/store";
+import { publicClient } from "@/lib/wagmi";
+import { MARKET_PRICE_SCHEMA, TRADE_EXECUTED_SCHEMA } from "@/lib/somnia-sdk";
+
+// Subscribes to live price updates for a specific prediction market
+export function useMarketRealtime(marketId: number) {
+  const { updateMarket } = useMarketStore();
+
+  useEffect(() => {
+    const sdk = new SDK({ public: publicClient });
+    const schemaId = sdk.streams.computeSchemaId(MARKET_PRICE_SCHEMA);
+
+    const subscription = sdk.streams.subscribe(
+      { 
+        schemaId: schemaId,
+        filter: { marketId: marketId }
+      },
+      (payload) => {
+        // SDK automatically decodes based on registered schema
+        const marketData = payload.decodedData;
+
+        // Update Zustand store, triggering React re-renders
+        updateMarket(marketId, {
+          totalYesShares: marketData.totalYesShares,
+          totalNoShares: marketData.totalNoShares,
+          totalVolume: marketData.totalVolume,
+          currentPrice: marketData.currentPrice,
+        });
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [marketId, updateMarket]);
+}
+
+// Subscribes to trade activity for live trade feed display
+export function useTradeActivityStream(marketId: number, onTradeReceived: (trade: TradeDetails) => void) {
+  useEffect(() => {
+    const sdk = new SDK({ public: publicClient });
+    const schemaId = sdk.streams.computeSchemaId(TRADE_EXECUTED_SCHEMA);
+
+    const subscription = sdk.streams.subscribe(
+      {
+        schemaId: schemaId,
+        filter: { marketId: marketId }
+      },
+      (payload) => {
+        const trade = payload.decodedData;
+        onTradeReceived({
+          trader: trade.trader,
+          isYes: trade.isYes,
+          shares: trade.shares,
+          price: trade.price,
+          timestamp: trade.timestamp,
+        });
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [marketId, onTradeReceived]);
+}
+```
+
+---
+
+### 4. Live Portfolio Tracking with Position Streams
+
+Users can watch their portfolio value change in real-time as market prices move. We subscribe to position streams filtered by the user's wallet address, updating profit/loss calculations instantly.
+
+```typescript
+// file: hooks/useRealtime.ts
+
+import { USER_POSITION_SCHEMA } from "@/lib/somnia-sdk";
+
+// Subscribes to real-time position updates for portfolio page
+export function usePositionRealtime(marketId: number, userAddress: string) {
+  const { updateUserPosition } = useMarketStore();
+
+  useEffect(() => {
+    if (!userAddress) return;
+
+    const sdk = new SDK({ public: publicClient });
+    const schemaId = sdk.streams.computeSchemaId(USER_POSITION_SCHEMA);
+
+    const subscription = sdk.streams.subscribe(
+      {
+        schemaId: schemaId,
+        filter: { marketId: marketId, user: userAddress }
+      },
+      (payload) => {
+        const position = payload.decodedData;
+
+        updateUserPosition(marketId, userAddress, {
+          yesShares: position.yesShares,
+          noShares: position.noShares,
+          invested: position.totalInvested,
+          currentValue: position.currentValue,
+          pnl: position.profitLoss,
+        });
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [marketId, userAddress, updateUserPosition]);
+}
+```
+
+---
+
+### 5. Powering Live Price Charts
+
+Our price charts subscribe directly to the trade stream, adding new data points as trades occur. This creates smooth, animated charts that visualize market sentiment in real-time.
+
+```typescript
+// file: components/PriceChart.tsx
+
+import { useState, useEffect } from "react";
+import { SDK } from "@somnia-chain/streams";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { TRADE_EXECUTED_SCHEMA } from "@/lib/somnia-sdk";
+
+export function PriceChart({ marketId }: { marketId: number }) {
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
+
+  useEffect(() => {
+    const sdk = new SDK({ public: publicClient });
+    const schemaId = sdk.streams.computeSchemaId(TRADE_EXECUTED_SCHEMA);
+
+    // Subscribe to all trades on this market
+    const subscription = sdk.streams.subscribe(
+      { schemaId, filter: { marketId } },
+      (payload) => {
+        const trade = payload.decodedData;
+
+        // Append new price point, keeping last 100 for performance
+        setPriceHistory(prev => [
+          ...prev.slice(-100),
+          {
+            timestamp: trade.timestamp,
+            yesPrice: trade.price,
+            noPrice: 100 - trade.price,
+          }
+        ]);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [marketId]);
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <AreaChart data={priceHistory}>
+        <XAxis dataKey="timestamp" />
+        <YAxis domain={[0, 100]} />
+        <Area type="monotone" dataKey="yesPrice" stroke="#10b981" fill="#10b98133" name="YES" />
+        <Area type="monotone" dataKey="noPrice" stroke="#ef4444" fill="#ef444433" name="NO" />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+```
+
+---
+
+The `@somnia-chain/streams` SDK is the backbone of PulseMarket's real-time experience: This architecture transforms PulseMarket from a traditional blockchain application into a live trading platform where every user sees synchronized, real-time data.
+
 ## 📦 Installation
 
 ### Prerequisites
