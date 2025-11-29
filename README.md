@@ -18,16 +18,10 @@ Welcome to PulseMarket - the first real-time prediction market platform built on
 - **💰 Low Fees**: Only 2% platform fee on trades
 - **📱 Mobile Responsive**: Trade anywhere, on any device
 
-### 🏆 Key Feautures
-
-1. **Innovation**: First prediction market platform to use Somnia Data Streams for real-time orderbook and price updates
-2. **Real-Time at Core**: Every feature leverages real-time capabilities - not just an add-on
-3. **Production Ready**: Complete, deployable application with polished UX/UI
-4. **Technical Excellence**: Advanced implementation of SDK with multiple data schemas, subscriptions, and event-driven architecture
-5. **Ecosystem Value**: Can evolve into a major DeFi primitive on Somnia network
+## 💹 Website Link
+Link - https://pulse-market-somnia.vercel.app/
 
 ## 🎬 Demo Video
-
 [Watch the Demo Video] - https://youtu.be/5l28WGr2ubY
 
 ## 🛠️ Technology Stack
@@ -52,6 +46,69 @@ Welcome to PulseMarket - the first real-time prediction market platform built on
 - **Event-Driven Updates** - Instant UI reactivity
 - **Schema-Based Encoding** - Structured data streams
 - **Multiple Data Schemas**: Markets, Orders, Trades, Positions
+
+  ### Data Streaming Architecture
+
+```typescript
+// Market Data Schema
+{
+  marketId: number
+  question: string
+  totalYesShares: number
+  totalNoShares: number
+  currentPrice: number
+  timestamp: number
+}
+
+// Real-Time Subscription
+await sdk.streams.subscribe({
+  id: marketStreamId,
+  onData: (data) => {
+    // UI updates instantly
+    updateMarketPrice(data.currentPrice);
+  }
+});
+```
+
+### Smart Contract Functions
+
+- `createMarket()` - Create new prediction market
+- `buyShares()` - Purchase YES or NO shares
+- `sellShares()` - Sell shares back to market
+- `resolveMarket()` - Resolve market outcome
+- `claimWinnings()` - Claim profits from resolved markets
+- `calculateCost()` - Get real-time price quote
+
+  ## 🎯 How It Works
+
+### Market Creation
+1. Users create prediction markets with binary outcomes (YES/NO)
+2. Markets have defined end times and resolution criteria
+3. Creator is responsible for resolving the market
+
+### Trading Mechanism
+- **Automated Market Maker (AMM)**: Uses constant product formula (x * y = k)
+- **Dynamic Pricing**: Prices adjust based on supply/demand
+- **Instant Settlement**: All trades execute on-chain immediately
+- **Real-Time Updates**: Prices and positions update via Somnia Data Streams
+
+  ## 🎨 Screenshots
+
+### Home Page - Market Listings
+<img width="1903" height="887" alt="image" src="https://github.com/user-attachments/assets/1d6f45e3-67db-41df-914c-00103971873c" />
+
+
+### Market Detail Page
+<img width="1918" height="875" alt="image" src="https://github.com/user-attachments/assets/4b1a12a4-1085-453b-b92f-57eeb8abef09" />
+
+
+### Portfolio Dashboard
+<img width="1916" height="882" alt="image" src="https://github.com/user-attachments/assets/ba7fe002-5b7d-4ab4-8d43-810cfe2bf18b" />
+
+
+### Trading Interface
+<img width="1918" height="885" alt="image" src="https://github.com/user-attachments/assets/9198d274-a80f-459b-b20d-8ace24ebab7c" />
+
 
 ## 📦 Installation
 
@@ -243,20 +300,6 @@ npm run deploy
 2. Ensure proper security audits
 3. Deploy with production keys
 4. Verify contracts on explorer
-
-## 🎨 Screenshots
-
-### Home Page - Market Listings
-Beautiful grid of prediction markets with real-time price updates
-
-### Market Detail Page
-Live price charts, trading interface, and market statistics
-
-### Portfolio Dashboard
-Track all your positions with real-time P&L calculations
-
-### Trading Interface
-Smooth, intuitive trading with instant price feedback
 
 ## 🤝 Contributing
 
