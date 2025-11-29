@@ -24,6 +24,9 @@ Link - https://pulse-market-somnia.vercel.app/
 ## 🎬 Demo Video
 [Watch the Demo Video] - https://youtu.be/5l28WGr2ubY
 
+## 🔐 Contract Address
+https://shannon-explorer.somnia.network/address/0xd6f65788e218db8cddf88697a4b0edf2c492ce2f
+
 ## 🛠️ Technology Stack
 
 ### Frontend
