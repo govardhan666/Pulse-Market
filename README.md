@@ -28,7 +28,7 @@ Welcome to PulseMarket - the first real-time prediction market platform built on
 
 ## 🎬 Demo Video
 
-[Watch the Demo Video] - 
+[Watch the Demo Video] - https://youtu.be/5l28WGr2ubY
 
 ## 🛠️ Technology Stack
 
