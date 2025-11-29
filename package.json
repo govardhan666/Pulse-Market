@@ -1,0 +1,50 @@
+{
+  "name": "pulsemarket",
+  "version": "1.0.0",
+  "description": "Real-Time Decentralized Prediction Market Platform powered by Somnia Data Streams",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.ts --network somnia"
+  },
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "2.0.5",
+    "@tanstack/react-query": "5.45.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.468.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^2.14.1",
+    "tailwind-merge": "^2.5.5",
+    "viem": "2.15.1",
+    "wagmi": "2.9.8",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-viem": "^2.0.5",
+    "@types/node": "^22.9.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.15",
+    "hardhat": "^2.22.17",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
